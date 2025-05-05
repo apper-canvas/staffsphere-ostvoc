@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
-import { format } from 'date-fns';
+import { format, isWithinInterval, parseISO, differenceInDays, getDaysInMonth } from 'date-fns';
 import getIcon from '../utils/iconUtils';
 
 const MainFeature = ({ activeModule }) => {
@@ -41,6 +41,8 @@ const MainFeature = ({ activeModule }) => {
     { date: '2023-06-21', clockIn: '09:15 AM', clockOut: '05:45 PM', status: 'Present' },
     { date: '2023-06-22', clockIn: '08:55 AM', clockOut: '06:05 PM', status: 'Present' },
     { date: '2023-06-23', clockIn: '-', clockOut: '-', status: 'Absent' },
+    { date: '2023-06-24', clockIn: '09:10 AM', clockOut: '01:30 PM', status: 'Half Day' },
+    { date: '2023-06-25', clockIn: '08:45 AM', clockOut: '05:15 PM', status: 'Work from Home' },
   ]);
 
   // Leave Management Module State
@@ -50,11 +52,21 @@ const MainFeature = ({ activeModule }) => {
   const [leaveReason, setLeaveReason] = useState('');
   const [leaveRequests, setLeaveRequests] = useState([
     { id: 1, type: 'Sick Leave', start: '2023-07-12', end: '2023-07-14', status: 'Approved' },
-    { id: 2, type: 'Vacation', start: '2023-08-10', end: '2023-08-20', status: 'Pending' }
+    { id: 2, type: 'Vacation', start: '2023-08-10', end: '2023-08-20', status: 'Pending' },
+    { id: 3, type: 'Personal Leave', start: '2023-06-05', end: '2023-06-07', status: 'Approved' }
   ]);
 
-  // Payroll Module State (Updated for Indian Structure)
+  // Payroll Module State (Updated for Indian Structure with TDS)
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [workingDays, setWorkingDays] = useState(22); // Default working days in a month
+  const [presentDays, setPresentDays] = useState(20); // Default present days
+  const [halfDays, setHalfDays] = useState(1); // Default half days
+  const [absentDays, setAbsentDays] = useState(1); // Default absent days
+  const [leaveDays, setLeaveDays] = useState(0); // Default leave days
+  const [paidLeaves, setPaidLeaves] = useState(0); // Default paid leaves
+  const [unpaidLeaves, setUnpaidLeaves] = useState(0); // Default unpaid leaves
+  const [basicSalary, setBasicSalary] = useState(35000); // Default basic salary
+
   const [payrollData, setPayrollData] = useState({
     basicSalary: 35000,
     allowances: { 
@@ -69,6 +81,8 @@ const MainFeature = ({ activeModule }) => {
       esi: 0, 
       tds: 3200 
     },
+    attendanceBasedDeduction: 0,
+    leaveBasedDeduction: 0,
     netSalary: 58400
   });
 
@@ -190,6 +204,142 @@ const MainFeature = ({ activeModule }) => {
     toast.success('Leave request submitted successfully', {
       icon: '📅'
     });
+  };
+
+  // Calculate attendance and leave based salary adjustments
+  const calculateSalaryAdjustments = () => {
+    // Parse selected month
+    const selectedDate = new Date(selectedMonth);
+    const daysInMonth = getDaysInMonth(selectedDate);
+    const monthYear = format(selectedDate, 'yyyy-MM');
+    
+    // Count attendance types from records for the selected month
+    let presentCount = 0;
+    let halfDayCount = 0;
+    let absentCount = 0;
+    let wfhCount = 0;
+    
+    // Filter records for the selected month
+    const monthRecords = attendanceRecords.filter(record => {
+      const recordDate = record.date.substring(0, 7); // Get YYYY-MM part
+      return recordDate === monthYear;
+    });
+    
+    // Count status types
+    monthRecords.forEach(record => {
+      if (record.status === 'Present') presentCount++;
+      else if (record.status === 'Half Day') halfDayCount++;
+      else if (record.status === 'Absent') absentCount++;
+      else if (record.status === 'Work from Home') wfhCount++;
+    });
+    
+    // Calculate approved leaves in the selected month
+    let approvedLeaveCount = 0;
+    let paidLeaveCount = 0;
+    let unpaidLeaveCount = 0;
+    
+    leaveRequests.forEach(leave => {
+      if (leave.status === 'Approved') {
+        const startDate = parseISO(leave.start);
+        const endDate = parseISO(leave.end);
+        const leaveDuration = differenceInDays(endDate, startDate) + 1;
+        
+        // Check if leave falls within the selected month
+        const firstDayOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+        const lastDayOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+        
+        // Check if leave intersects with the selected month
+        if (
+          (startDate <= lastDayOfMonth && endDate >= firstDayOfMonth) ||
+          (endDate >= firstDayOfMonth && startDate <= lastDayOfMonth)
+        ) {
+          approvedLeaveCount += leaveDuration;
+          
+          // Determine if it's a paid or unpaid leave
+          if (leave.type === 'Sick Leave' || leave.type === 'Casual Leave') {
+            paidLeaveCount += leaveDuration;
+          } else {
+            unpaidLeaveCount += leaveDuration;
+          }
+        }
+      }
+    });
+    
+    // Update state with the counts
+    setPresentDays(presentCount);
+    setHalfDays(halfDayCount);
+    setAbsentDays(absentCount);
+    setLeaveDays(approvedLeaveCount);
+    setPaidLeaves(paidLeaveCount);
+    setUnpaidLeaves(unpaidLeaveCount);
+    setWorkingDays(daysInMonth);
+    
+    // Calculate salary adjustments
+    const dailyRate = basicSalary / daysInMonth;
+    const halfDayDeduction = (dailyRate * 0.5) * halfDayCount;
+    const absentDeduction = dailyRate * absentCount;
+    const unpaidLeaveDeduction = dailyRate * unpaidLeaveCount;
+    
+    // Total deductions from attendance and leaves
+    const attendanceDeduction = halfDayDeduction + absentDeduction;
+    const leaveDeduction = unpaidLeaveDeduction;
+    
+    // Calculate TDS based on projected annual income
+    const monthlyGross = basicSalary + 
+      payrollData.allowances.hra + 
+      payrollData.allowances.da + 
+      payrollData.allowances.conveyance + 
+      payrollData.allowances.specialAllowance;
+    
+    const projectedAnnualIncome = monthlyGross * 12;
+    let tdsAmount = calculateMonthlyTDS(projectedAnnualIncome);
+    
+    // Update payroll data with new calculations
+    setPayrollData({
+      ...payrollData,
+      basicSalary: basicSalary,
+      attendanceBasedDeduction: Math.round(attendanceDeduction),
+      leaveBasedDeduction: Math.round(leaveDeduction),
+      deductions: {
+        ...payrollData.deductions,
+        tds: tdsAmount
+      },
+      netSalary: Math.round(
+        basicSalary + 
+        payrollData.allowances.hra + 
+        payrollData.allowances.da + 
+        payrollData.allowances.conveyance + 
+        payrollData.allowances.specialAllowance - 
+        (payrollData.deductions.professionalTax + 
+         payrollData.deductions.epf + 
+         payrollData.deductions.esi + 
+         tdsAmount + 
+         attendanceDeduction + 
+         leaveDeduction)
+      )
+    });
+  };
+
+  // Calculate monthly TDS based on annual income
+  const calculateMonthlyTDS = (annualIncome) => {
+    // Simplified TDS calculation based on old tax regime
+    let annualTax = 0;
+    
+    if (annualIncome <= 250000) {
+      annualTax = 0;
+    } else if (annualIncome <= 500000) {
+      annualTax = (annualIncome - 250000) * 0.05;
+    } else if (annualIncome <= 1000000) {
+      annualTax = 12500 + (annualIncome - 500000) * 0.2;
+    } else {
+      annualTax = 112500 + (annualIncome - 1000000) * 0.3;
+    }
+    
+    // Add 4% cess
+    annualTax = annualTax + (annualTax * 0.04);
+    
+    // Return monthly TDS (annual tax divided by 12)
+    return Math.round(annualTax / 12);
   };
 
   // Tax Calculator Functions
@@ -352,6 +502,36 @@ const MainFeature = ({ activeModule }) => {
     setSelectedCandidate(candidate);
     setShowViewCandidateModal(true);
   };
+
+  // Update basic salary when changed
+  const handleBasicSalaryChange = (e) => {
+    const newBasicSalary = parseInt(e.target.value);
+    setBasicSalary(newBasicSalary);
+    
+    // Recalculate allowances based on basic salary
+    const newHRA = Math.round(newBasicSalary * 0.4); // 40% of basic as HRA
+    const newDA = Math.round(newBasicSalary * 0.2); // 20% of basic as DA
+    const newSpecialAllowance = Math.round(newBasicSalary * 0.24); // 24% of basic as special allowance
+    
+    // Update PF deduction (12% of basic)
+    const newPF = Math.round(newBasicSalary * 0.12);
+    
+    // Update payroll data with new calculations
+    setPayrollData(prev => ({
+      ...prev,
+      basicSalary: newBasicSalary,
+      allowances: {
+        ...prev.allowances,
+        hra: newHRA,
+        da: newDA,
+        specialAllowance: newSpecialAllowance
+      },
+      deductions: {
+        ...prev.deductions,
+        epf: newPF
+      }
+    }));
+  };
   
   // Update tax calculations when inputs change
   useEffect(() => {
@@ -364,6 +544,11 @@ const MainFeature = ({ activeModule }) => {
       handleCandidateSearch({ target: { value: candidateSearchQuery } });
     }
   }, [candidates]);
+  
+  // Update salary calculations when month, attendance or basic salary changes
+  useEffect(() => {
+    calculateSalaryAdjustments();
+  }, [selectedMonth, attendanceRecords, leaveRequests, basicSalary]);
 
   // Animation variants
   const containerVariants = {
@@ -665,6 +850,18 @@ const MainFeature = ({ activeModule }) => {
                   <div className="p-4 rounded-lg bg-surface-50 dark:bg-surface-800">
                     <h4 className="text-lg font-medium mb-3">Earnings</h4>
                     
+                    <div className="mb-4">
+                      <label className="form-label">Basic Salary (₹)</label>
+                      <input 
+                        type="number" 
+                        value={basicSalary}
+                        onChange={handleBasicSalaryChange}
+                        className="form-input"
+                        min="1000"
+                        step="1000"
+                      />
+                    </div>
+                    
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span>Basic Salary</span>
@@ -702,6 +899,47 @@ const MainFeature = ({ activeModule }) => {
                               payrollData.allowances.specialAllowance).toLocaleString()}
                           </span>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 rounded-lg bg-surface-50 dark:bg-surface-800">
+                    <h4 className="text-lg font-medium mb-3">Attendance & Leave Summary</h4>
+                    
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-900">
+                        <div className="text-sm text-green-800 dark:text-green-300">Present Days</div>
+                        <div className="text-xl font-semibold mt-1">{presentDays} <span className="text-xs text-green-700 dark:text-green-400">days</span></div>
+                      </div>
+                      
+                      <div className="p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-900">
+                        <div className="text-sm text-yellow-800 dark:text-yellow-300">Half Days</div>
+                        <div className="text-xl font-semibold mt-1">{halfDays} <span className="text-xs text-yellow-700 dark:text-yellow-400">days</span></div>
+                      </div>
+                      
+                      <div className="p-3 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-900">
+                        <div className="text-sm text-red-800 dark:text-red-300">Absent Days</div>
+                        <div className="text-xl font-semibold mt-1">{absentDays} <span className="text-xs text-red-700 dark:text-red-400">days</span></div>
+                      </div>
+                      
+                      <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-900">
+                        <div className="text-sm text-blue-800 dark:text-blue-300">Leave Days</div>
+                        <div className="text-xl font-semibold mt-1">{leaveDays} <span className="text-xs text-blue-700 dark:text-blue-400">days</span></div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Working Days in Month</span>
+                        <span className="font-medium">{workingDays} days</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Paid Leaves</span>
+                        <span className="font-medium">{paidLeaves} days</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Unpaid Leaves</span>
+                        <span className="font-medium">{unpaidLeaves} days</span>
                       </div>
                     </div>
                   </div>
@@ -765,7 +1003,7 @@ const MainFeature = ({ activeModule }) => {
                           <div className="relative group ml-1">
                             <HelpCircleIcon className="w-4 h-4 text-surface-400" />
                             <div className="absolute left-0 bottom-full mb-2 w-52 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
-                              Tax Deducted at Source as per Income Tax Act.
+                              Tax Deducted at Source as per Income Tax Act, based on projected annual income.
                             </div>
                           </div>
                         </div>
@@ -787,6 +1025,36 @@ const MainFeature = ({ activeModule }) => {
                         </div>
                       )}
                       
+                      {payrollData.attendanceBasedDeduction > 0 && (
+                        <div className="flex justify-between">
+                          <div className="flex items-center">
+                            <span>Attendance-based Deduction</span>
+                            <div className="relative group ml-1">
+                              <HelpCircleIcon className="w-4 h-4 text-surface-400" />
+                              <div className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                                Deductions for half days and absences. Full day salary is deducted for absence, and half day for half-day attendance.
+                              </div>
+                            </div>
+                          </div>
+                          <span>₹{payrollData.attendanceBasedDeduction.toLocaleString()}</span>
+                        </div>
+                      )}
+                      
+                      {payrollData.leaveBasedDeduction > 0 && (
+                        <div className="flex justify-between">
+                          <div className="flex items-center">
+                            <span>Leave-based Deduction</span>
+                            <div className="relative group ml-1">
+                              <HelpCircleIcon className="w-4 h-4 text-surface-400" />
+                              <div className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                                Deductions for unpaid leaves. Sick leaves and casual leaves are paid, while other types may be unpaid depending on company policy.
+                              </div>
+                            </div>
+                          </div>
+                          <span>₹{payrollData.leaveBasedDeduction.toLocaleString()}</span>
+                        </div>
+                      )}
+                      
                       <div className="border-t border-surface-200 dark:border-surface-700 pt-2 mt-2">
                         <div className="flex justify-between font-semibold">
                           <span>Total Deductions</span>
@@ -794,7 +1062,9 @@ const MainFeature = ({ activeModule }) => {
                             ₹{(payrollData.deductions.professionalTax + 
                               payrollData.deductions.epf + 
                               payrollData.deductions.esi + 
-                              payrollData.deductions.tds).toLocaleString()}
+                              payrollData.deductions.tds +
+                              payrollData.attendanceBasedDeduction +
+                              payrollData.leaveBasedDeduction).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -810,6 +1080,54 @@ const MainFeature = ({ activeModule }) => {
                     <button className="mt-4 bg-white text-primary hover:bg-surface-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors">
                       Download Pay Slip
                     </button>
+                  </div>
+                  
+                  <div className="p-4 rounded-lg bg-surface-50 dark:bg-surface-800">
+                    <h4 className="text-lg font-medium mb-3 flex items-center">
+                      <InfoIcon className="w-4 h-4 mr-2 text-primary" />
+                      Salary Calculation Breakdown
+                    </h4>
+                    
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Total Earnings (A)</span>
+                        <span className="font-medium">
+                          ₹{(payrollData.basicSalary + 
+                              payrollData.allowances.hra + 
+                              payrollData.allowances.da + 
+                              payrollData.allowances.conveyance + 
+                              payrollData.allowances.specialAllowance).toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <span>Standard Deductions (B)</span>
+                        <span className="font-medium">
+                          ₹{(payrollData.deductions.professionalTax + 
+                              payrollData.deductions.epf + 
+                              payrollData.deductions.esi +
+                              payrollData.deductions.tds).toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <span>Attendance & Leave Deductions (C)</span>
+                        <span className="font-medium text-red-500 dark:text-red-400">
+                          ₹{(payrollData.attendanceBasedDeduction + 
+                              payrollData.leaveBasedDeduction).toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between pt-1 border-t border-surface-200 dark:border-surface-700 mt-1 font-medium">
+                        <span>Net Salary (A-B-C)</span>
+                        <span>₹{payrollData.netSalary.toLocaleString()}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 text-xs text-surface-500">
+                      <p>* Salary is calculated based on your attendance and approved leaves for the month.</p>
+                      <p>* TDS is calculated based on your projected annual income and tax regime.</p>
+                    </div>
                   </div>
                 </div>
               </div>
