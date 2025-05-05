@@ -20,6 +20,9 @@ const MainFeature = ({ activeModule }) => {
   const PlusIcon = getIcon('Plus');
   const ChevronRightIcon = getIcon('ChevronRight');
   const CalendarPlusIcon = getIcon('CalendarPlus');
+  const DollarSignIcon = getIcon('DollarSign');
+  const PercentIcon = getIcon('Percent');
+  const UsersIcon = getIcon('Users');
   
   // Attendance Module State
   const [attendanceStatus, setAttendanceStatus] = useState('');
