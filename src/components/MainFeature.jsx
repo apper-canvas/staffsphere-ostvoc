@@ -26,6 +26,9 @@ const MainFeature = ({ activeModule }) => {
   const BuildingIcon = getIcon('Building');
   const GraduationCapIcon = getIcon('GraduationCap');
   const AwardIcon = getIcon('Award');
+  const HelpCircleIcon = getIcon('HelpCircle');
+  const InfoIcon = getIcon('Info');
+  const RupeeIcon = getIcon('IndianRupee');
   
   // Attendance Module State
   const [attendanceStatus, setAttendanceStatus] = useState('');
@@ -50,25 +53,38 @@ const MainFeature = ({ activeModule }) => {
     { id: 2, type: 'Vacation', start: '2023-08-10', end: '2023-08-20', status: 'Pending' }
   ]);
 
-  // Payroll Module State
+  // Payroll Module State (Updated for Indian Structure)
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [payrollData, setPayrollData] = useState({
-    baseSalary: 5000,
-    allowances: { housing: 500, transport: 300, meal: 200 },
-    deductions: { tax: 600, insurance: 250, pension: 350 },
-    netSalary: 4800
+    basicSalary: 35000,
+    allowances: { 
+      hra: 14000, 
+      da: 7000, 
+      conveyance: 1600, 
+      specialAllowance: 8400 
+    },
+    deductions: { 
+      professionalTax: 200, 
+      epf: 4200, 
+      esi: 0, 
+      tds: 3200 
+    },
+    netSalary: 58400
   });
 
-  // Tax Calculator Module State
-  const [income, setIncome] = useState(60000);
-  const [taxFilingStatus, setTaxFilingStatus] = useState('single');
+  // Tax Calculator Module State (Updated for Indian Tax System)
+  const [income, setIncome] = useState(750000);
+  const [taxRegime, setTaxRegime] = useState('old');
+  const [standard80c, setStandard80c] = useState(100000);
+  const [medical80d, setMedical80d] = useState(25000);
+  const [hraExemption, setHraExemption] = useState(60000);
+  const [otherDeductions, setOtherDeductions] = useState(20000);
   const [taxBreakdown, setTaxBreakdown] = useState({
-    federalTax: 9200,
-    stateTax: 3000,
-    socialSecurity: 3720,
-    medicare: 870,
-    totalTax: 16790,
-    effectiveRate: 27.98
+    incomeTax: 27500,
+    surcharge: 0,
+    cessAmount: 550,
+    totalTax: 28050,
+    effectiveRate: 3.74
   });
 
   // Hiring Module State
@@ -178,33 +194,76 @@ const MainFeature = ({ activeModule }) => {
 
   // Tax Calculator Functions
   const calculateTax = () => {
-    let federalTax, stateTax, socialSecurity, medicare, totalTax, effectiveRate;
+    let incomeTax = 0;
+    let surcharge = 0;
+    let cessAmount = 0;
+    let totalTax = 0;
+    let effectiveRate = 0;
+    let taxableIncome = income;
     
-    // Simple tax calculation logic (illustrative only)
-    if (taxFilingStatus === 'single') {
-      federalTax = income * 0.22;
-      stateTax = income * 0.05;
-    } else if (taxFilingStatus === 'married') {
-      federalTax = income * 0.18;
-      stateTax = income * 0.045;
+    // Calculate taxable income based on regime
+    if (taxRegime === 'old') {
+      // Old regime allows standard deductions
+      // Deduct Section 80C (max 150000)
+      const deduction80c = Math.min(standard80c, 150000);
+      // Deduct Section 80D (max 50000 for self + parents)
+      const deduction80d = Math.min(medical80d, 50000);
+      // HRA exemption and other deductions
+      const totalDeductions = deduction80c + deduction80d + hraExemption + otherDeductions;
+      
+      taxableIncome = Math.max(0, income - totalDeductions);
+      
+      // Calculate tax as per old slabs
+      if (taxableIncome <= 250000) {
+        incomeTax = 0;
+      } else if (taxableIncome <= 500000) {
+        incomeTax = (taxableIncome - 250000) * 0.05;
+      } else if (taxableIncome <= 1000000) {
+        incomeTax = 12500 + (taxableIncome - 500000) * 0.2;
+      } else {
+        incomeTax = 112500 + (taxableIncome - 1000000) * 0.3;
+      }
     } else {
-      federalTax = income * 0.15;
-      stateTax = income * 0.04;
+      // New regime has different slabs with no exemptions
+      if (taxableIncome <= 300000) {
+        incomeTax = 0;
+      } else if (taxableIncome <= 600000) {
+        incomeTax = (taxableIncome - 300000) * 0.05;
+      } else if (taxableIncome <= 900000) {
+        incomeTax = 15000 + (taxableIncome - 600000) * 0.1;
+      } else if (taxableIncome <= 1200000) {
+        incomeTax = 45000 + (taxableIncome - 900000) * 0.15;
+      } else if (taxableIncome <= 1500000) {
+        incomeTax = 90000 + (taxableIncome - 1200000) * 0.2;
+      } else {
+        incomeTax = 150000 + (taxableIncome - 1500000) * 0.3;
+      }
     }
     
-    socialSecurity = Math.min(income * 0.062, 9114); // Cap at $147,000 income
-    medicare = income * 0.0145;
+    // Surcharge calculation (simplified)
+    if (income > 5000000 && income <= 10000000) {
+      surcharge = incomeTax * 0.1;
+    } else if (income > 10000000 && income <= 20000000) {
+      surcharge = incomeTax * 0.15;
+    } else if (income > 20000000 && income <= 50000000) {
+      surcharge = incomeTax * 0.25;
+    } else if (income > 50000000) {
+      surcharge = incomeTax * 0.37;
+    }
     
-    totalTax = federalTax + stateTax + socialSecurity + medicare;
+    // Health and Education Cess (4% of tax + surcharge)
+    cessAmount = (incomeTax + surcharge) * 0.04;
+    
+    totalTax = incomeTax + surcharge + cessAmount;
     effectiveRate = ((totalTax / income) * 100).toFixed(2);
     
     setTaxBreakdown({
-      federalTax: federalTax.toFixed(0),
-      stateTax: stateTax.toFixed(0),
-      socialSecurity: socialSecurity.toFixed(0),
-      medicare: medicare.toFixed(0),
+      incomeTax: incomeTax.toFixed(0),
+      surcharge: surcharge.toFixed(0),
+      cessAmount: cessAmount.toFixed(0),
       totalTax: totalTax.toFixed(0),
-      effectiveRate
+      effectiveRate,
+      taxableIncome: taxableIncome.toFixed(0)
     });
     
     toast.info('Tax calculation updated', {
@@ -297,7 +356,7 @@ const MainFeature = ({ activeModule }) => {
   // Update tax calculations when inputs change
   useEffect(() => {
     calculateTax();
-  }, [income, taxFilingStatus]);
+  }, [income, taxRegime, standard80c, medical80d, hraExemption, otherDeductions]);
   
   // Update filtered candidates when candidates change
   useEffect(() => {
@@ -586,7 +645,7 @@ const MainFeature = ({ activeModule }) => {
             <motion.div variants={itemVariants} className="card">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
                 <h3 className="text-xl font-semibold flex items-center mb-3 sm:mb-0">
-                  <DollarSignIcon className="w-5 h-5 mr-2 text-primary" />
+                  <RupeeIcon className="w-5 h-5 mr-2 text-primary" />
                   Payroll Information
                 </h3>
                 
@@ -608,33 +667,39 @@ const MainFeature = ({ activeModule }) => {
                     
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span>Base Salary</span>
-                        <span className="font-medium">${payrollData.baseSalary.toLocaleString()}</span>
+                        <span>Basic Salary</span>
+                        <span className="font-medium">₹{payrollData.basicSalary.toLocaleString()}</span>
                       </div>
                       
                       <div className="flex justify-between">
-                        <span>Housing Allowance</span>
-                        <span>${payrollData.allowances.housing.toLocaleString()}</span>
+                        <span>House Rent Allowance (HRA)</span>
+                        <span>₹{payrollData.allowances.hra.toLocaleString()}</span>
                       </div>
                       
                       <div className="flex justify-between">
-                        <span>Transport Allowance</span>
-                        <span>${payrollData.allowances.transport.toLocaleString()}</span>
+                        <span>Dearness Allowance (DA)</span>
+                        <span>₹{payrollData.allowances.da.toLocaleString()}</span>
                       </div>
                       
                       <div className="flex justify-between">
-                        <span>Meal Allowance</span>
-                        <span>${payrollData.allowances.meal.toLocaleString()}</span>
+                        <span>Conveyance Allowance</span>
+                        <span>₹{payrollData.allowances.conveyance.toLocaleString()}</span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <span>Special Allowance</span>
+                        <span>₹{payrollData.allowances.specialAllowance.toLocaleString()}</span>
                       </div>
                       
                       <div className="border-t border-surface-200 dark:border-surface-700 pt-2 mt-2">
                         <div className="flex justify-between font-semibold">
                           <span>Total Earnings</span>
                           <span>
-                            ${(payrollData.baseSalary + 
-                              payrollData.allowances.housing + 
-                              payrollData.allowances.transport + 
-                              payrollData.allowances.meal).toLocaleString()}
+                            ₹{(payrollData.basicSalary + 
+                              payrollData.allowances.hra + 
+                              payrollData.allowances.da + 
+                              payrollData.allowances.conveyance + 
+                              payrollData.allowances.specialAllowance).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -647,7 +712,7 @@ const MainFeature = ({ activeModule }) => {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span>Payment Method</span>
-                        <span className="bg-surface-200 dark:bg-surface-700 px-3 py-1 rounded text-sm">Direct Deposit</span>
+                        <span className="bg-surface-200 dark:bg-surface-700 px-3 py-1 rounded text-sm">NEFT Transfer</span>
                       </div>
                       
                       <div className="flex justify-between">
@@ -657,7 +722,7 @@ const MainFeature = ({ activeModule }) => {
                       
                       <div className="flex justify-between">
                         <span>Payment Date</span>
-                        <span>25th of every month</span>
+                        <span>Last working day of month</span>
                       </div>
                     </div>
                   </div>
@@ -669,27 +734,67 @@ const MainFeature = ({ activeModule }) => {
                     
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span>Income Tax</span>
-                        <span>${payrollData.deductions.tax.toLocaleString()}</span>
+                        <div className="flex items-center">
+                          <span>Employee PF (12% of Basic)</span>
+                          <div className="relative group ml-1">
+                            <HelpCircleIcon className="w-4 h-4 text-surface-400" />
+                            <div className="absolute left-0 bottom-full mb-2 w-52 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                              Employee contribution to EPF, deducted from salary.
+                            </div>
+                          </div>
+                        </div>
+                        <span>₹{payrollData.deductions.epf.toLocaleString()}</span>
                       </div>
                       
                       <div className="flex justify-between">
-                        <span>Health Insurance</span>
-                        <span>${payrollData.deductions.insurance.toLocaleString()}</span>
+                        <div className="flex items-center">
+                          <span>Professional Tax</span>
+                          <div className="relative group ml-1">
+                            <HelpCircleIcon className="w-4 h-4 text-surface-400" />
+                            <div className="absolute left-0 bottom-full mb-2 w-52 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                              State-specific professional tax based on salary bracket.
+                            </div>
+                          </div>
+                        </div>
+                        <span>₹{payrollData.deductions.professionalTax.toLocaleString()}</span>
                       </div>
                       
                       <div className="flex justify-between">
-                        <span>Retirement Contribution</span>
-                        <span>${payrollData.deductions.pension.toLocaleString()}</span>
+                        <div className="flex items-center">
+                          <span>Income Tax (TDS)</span>
+                          <div className="relative group ml-1">
+                            <HelpCircleIcon className="w-4 h-4 text-surface-400" />
+                            <div className="absolute left-0 bottom-full mb-2 w-52 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                              Tax Deducted at Source as per Income Tax Act.
+                            </div>
+                          </div>
+                        </div>
+                        <span>₹{payrollData.deductions.tds.toLocaleString()}</span>
                       </div>
+                      
+                      {payrollData.deductions.esi > 0 && (
+                        <div className="flex justify-between">
+                          <div className="flex items-center">
+                            <span>ESI Contribution</span>
+                            <div className="relative group ml-1">
+                              <HelpCircleIcon className="w-4 h-4 text-surface-400" />
+                              <div className="absolute left-0 bottom-full mb-2 w-52 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                                Employee's State Insurance for employees with gross salary below ₹21,000.
+                              </div>
+                            </div>
+                          </div>
+                          <span>₹{payrollData.deductions.esi.toLocaleString()}</span>
+                        </div>
+                      )}
                       
                       <div className="border-t border-surface-200 dark:border-surface-700 pt-2 mt-2">
                         <div className="flex justify-between font-semibold">
                           <span>Total Deductions</span>
                           <span>
-                            ${(payrollData.deductions.tax + 
-                              payrollData.deductions.insurance + 
-                              payrollData.deductions.pension).toLocaleString()}
+                            ₹{(payrollData.deductions.professionalTax + 
+                              payrollData.deductions.epf + 
+                              payrollData.deductions.esi + 
+                              payrollData.deductions.tds).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -699,7 +804,7 @@ const MainFeature = ({ activeModule }) => {
                   <div className="p-5 rounded-lg bg-primary text-white">
                     <h4 className="text-lg font-medium mb-4">Net Salary</h4>
                     
-                    <div className="text-3xl font-bold">${payrollData.netSalary.toLocaleString()}</div>
+                    <div className="text-3xl font-bold">₹{payrollData.netSalary.toLocaleString()}</div>
                     <div className="text-sm opacity-80 mt-1">for {format(new Date(selectedMonth), 'MMMM yyyy')}</div>
                     
                     <button className="mt-4 bg-white text-primary hover:bg-surface-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors">
@@ -724,106 +829,248 @@ const MainFeature = ({ activeModule }) => {
             <motion.div variants={itemVariants} className="card">
               <h3 className="text-xl font-semibold mb-6 flex items-center">
                 <PercentIcon className="w-5 h-5 mr-2 text-primary" />
-                Tax Calculator
+                Indian Income Tax Calculator
               </h3>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-6">
                   <div>
-                    <label className="form-label">Annual Income ($)</label>
+                    <label className="form-label">Gross Annual Income (₹)</label>
                     <input 
                       type="number" 
                       value={income}
                       onChange={(e) => setIncome(Number(e.target.value))}
                       className="form-input"
                       min="0"
-                      step="1000"
+                      step="10000"
                     />
                     <div className="mt-2">
                       <input
                         type="range"
                         min="0"
-                        max="200000"
-                        step="1000"
+                        max="2000000"
+                        step="10000"
                         value={income}
                         onChange={(e) => setIncome(Number(e.target.value))}
                         className="w-full h-2 bg-surface-200 dark:bg-surface-700 rounded-lg appearance-none cursor-pointer accent-primary"
                       />
                       <div className="flex justify-between text-xs text-surface-500 mt-1">
-                        <span>$0</span>
-                        <span>$100,000</span>
-                        <span>$200,000</span>
+                        <span>₹0</span>
+                        <span>₹10,00,000</span>
+                        <span>₹20,00,000</span>
                       </div>
                     </div>
                   </div>
                   
                   <div>
-                    <label className="form-label">Filing Status</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-                      {['single', 'married', 'head'].map((status) => (
+                    <label className="form-label flex items-center">
+                      <span>Tax Regime</span>
+                      <div className="relative group ml-1">
+                        <InfoIcon className="w-4 h-4 text-primary" />
+                        <div className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                          <p className="mb-1"><strong>Old Regime:</strong> Allows deductions/exemptions but has higher tax rates</p>
+                          <p><strong>New Regime:</strong> Lower tax rates but no deductions/exemptions allowed</p>
+                        </div>
+                      </div>
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                      {['old', 'new'].map((regime) => (
                         <button
-                          key={status}
+                          key={regime}
                           type="button"
-                          onClick={() => setTaxFilingStatus(status)}
+                          onClick={() => setTaxRegime(regime)}
                           className={`py-2 px-4 rounded-lg border transition-all text-center ${
-                            taxFilingStatus === status 
+                            taxRegime === regime 
                               ? 'border-primary bg-primary/10 text-primary dark:bg-primary/20'
                               : 'border-surface-200 dark:border-surface-700 hover:bg-surface-50 dark:hover:bg-surface-800'
                           }`}
                         >
-                          {status === 'single' ? 'Single' : 
-                           status === 'married' ? 'Married' : 
-                           'Head of Household'}
+                          {regime === 'old' ? 'Old Regime' : 'New Regime'}
                         </button>
                       ))}
                     </div>
                   </div>
+                  
+                  {taxRegime === 'old' && (
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-surface-600">Deductions & Exemptions</h4>
+                      
+                      <div>
+                        <div className="flex justify-between mb-1">
+                          <label className="text-sm flex items-center">
+                            <span>Section 80C (₹)</span>
+                            <div className="relative group ml-1">
+                              <InfoIcon className="w-3.5 h-3.5 text-surface-500" />
+                              <div className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                                Includes PF, ELSS, PPF, Life Insurance, etc. Maximum deduction of ₹1.5 lakhs.
+                              </div>
+                            </div>
+                          </label>
+                          <span className="text-xs text-surface-500">Max: ₹1,50,000</span>
+                        </div>
+                        <input 
+                          type="number" 
+                          value={standard80c}
+                          onChange={(e) => setStandard80c(Number(e.target.value))}
+                          className="form-input"
+                          min="0"
+                          max="150000"
+                          step="1000"
+                        />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between mb-1">
+                          <label className="text-sm flex items-center">
+                            <span>Section 80D - Medical Insurance (₹)</span>
+                            <div className="relative group ml-1">
+                              <InfoIcon className="w-3.5 h-3.5 text-surface-500" />
+                              <div className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                                Health insurance premium for self, family and parents. Maximum deduction of ₹25,000 (₹50,000 for senior citizens).
+                              </div>
+                            </div>
+                          </label>
+                          <span className="text-xs text-surface-500">Max: ₹50,000</span>
+                        </div>
+                        <input 
+                          type="number" 
+                          value={medical80d}
+                          onChange={(e) => setMedical80d(Number(e.target.value))}
+                          className="form-input"
+                          min="0"
+                          max="50000"
+                          step="1000"
+                        />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between mb-1">
+                          <label className="text-sm flex items-center">
+                            <span>HRA Exemption (₹)</span>
+                            <div className="relative group ml-1">
+                              <InfoIcon className="w-3.5 h-3.5 text-surface-500" />
+                              <div className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                                House Rent Allowance exemption based on actual HRA received, rent paid, and location (metro/non-metro).
+                              </div>
+                            </div>
+                          </label>
+                        </div>
+                        <input 
+                          type="number" 
+                          value={hraExemption}
+                          onChange={(e) => setHraExemption(Number(e.target.value))}
+                          className="form-input"
+                          min="0"
+                          step="1000"
+                        />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between mb-1">
+                          <label className="text-sm flex items-center">
+                            <span>Other Deductions (₹)</span>
+                            <div className="relative group ml-1">
+                              <InfoIcon className="w-3.5 h-3.5 text-surface-500" />
+                              <div className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                                Other deductions like 80E (Education Loan), 80G (Donations), 80TTA (Savings interest), etc.
+                              </div>
+                            </div>
+                          </label>
+                        </div>
+                        <input 
+                          type="number" 
+                          value={otherDeductions}
+                          onChange={(e) => setOtherDeductions(Number(e.target.value))}
+                          className="form-input"
+                          min="0"
+                          step="1000"
+                        />
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
                     <h4 className="font-medium mb-3">Income Breakdown</h4>
                     <div className="space-y-1">
                       <div className="flex justify-between">
                         <span>Gross Annual Income</span>
-                        <span className="font-medium">${income.toLocaleString()}</span>
+                        <span className="font-medium">₹{income.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Monthly Income</span>
-                        <span>${(income / 12).toLocaleString(undefined, {maximumFractionDigits: 2})}</span>
+                        <span>₹{(income / 12).toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Bi-weekly Income</span>
-                        <span>${(income / 26).toLocaleString(undefined, {maximumFractionDigits: 2})}</span>
-                      </div>
+                      {taxRegime === 'old' && (
+                        <div className="flex justify-between text-primary font-medium">
+                          <span>Total Deductions</span>
+                          <span>₹{(parseInt(standard80c) + parseInt(medical80d) + parseInt(hraExemption) + parseInt(otherDeductions)).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {taxBreakdown.taxableIncome && (
+                        <div className="flex justify-between font-medium pt-1 border-t border-surface-200 dark:border-surface-700 mt-1">
+                          <span>Taxable Income</span>
+                          <span>₹{parseInt(taxBreakdown.taxableIncome).toLocaleString()}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
                 
                 <div>
                   <div className="p-5 bg-surface-50 dark:bg-surface-800 rounded-lg">
-                    <h4 className="font-medium mb-4">Tax Calculation Results</h4>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-medium">Tax Calculation Results</h4>
+                      <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                        {taxRegime === 'old' ? 'Old Regime' : 'New Regime'}
+                      </span>
+                    </div>
                     
                     <div className="space-y-3">
                       <div className="flex justify-between">
-                        <span>Federal Income Tax</span>
-                        <span className="font-medium">${taxBreakdown.federalTax}</span>
+                        <div className="flex items-center">
+                          <span>Income Tax</span>
+                          <div className="relative group ml-1">
+                            <HelpCircleIcon className="w-4 h-4 text-surface-400" />
+                            <div className="absolute left-0 bottom-full mb-2 w-52 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                              Base tax calculated on taxable income as per applicable tax slabs.
+                            </div>
+                          </div>
+                        </div>
+                        <span className="font-medium">₹{taxBreakdown.incomeTax}</span>
                       </div>
+                      
+                      {parseInt(taxBreakdown.surcharge) > 0 && (
+                        <div className="flex justify-between">
+                          <div className="flex items-center">
+                            <span>Surcharge</span>
+                            <div className="relative group ml-1">
+                              <HelpCircleIcon className="w-4 h-4 text-surface-400" />
+                              <div className="absolute left-0 bottom-full mb-2 w-52 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                                Additional tax for income above ₹50 lakhs (10-37% of income tax based on income slab).
+                              </div>
+                            </div>
+                          </div>
+                          <span>₹{taxBreakdown.surcharge}</span>
+                        </div>
+                      )}
+                      
                       <div className="flex justify-between">
-                        <span>State Income Tax</span>
-                        <span>${taxBreakdown.stateTax}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Social Security (6.2%)</span>
-                        <span>${taxBreakdown.socialSecurity}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Medicare (1.45%)</span>
-                        <span>${taxBreakdown.medicare}</span>
+                        <div className="flex items-center">
+                          <span>Health & Education Cess (4%)</span>
+                          <div className="relative group ml-1">
+                            <HelpCircleIcon className="w-4 h-4 text-surface-400" />
+                            <div className="absolute left-0 bottom-full mb-2 w-52 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                              4% cess on total of income tax and surcharge.
+                            </div>
+                          </div>
+                        </div>
+                        <span>₹{taxBreakdown.cessAmount}</span>
                       </div>
                       
                       <div className="border-t border-surface-200 dark:border-surface-700 pt-3 mt-3">
                         <div className="flex justify-between font-semibold">
-                          <span>Total Tax</span>
-                          <span>${taxBreakdown.totalTax}</span>
+                          <span>Total Tax Liability</span>
+                          <span>₹{taxBreakdown.totalTax}</span>
                         </div>
                         <div className="flex justify-between mt-1">
                           <span>Effective Tax Rate</span>
@@ -835,18 +1082,44 @@ const MainFeature = ({ activeModule }) => {
                     <div className="border border-surface-200 dark:border-surface-700 rounded-lg p-3 mt-5">
                       <div className="flex justify-between font-semibold">
                         <span>After-Tax Income</span>
-                        <span>${(income - taxBreakdown.totalTax).toLocaleString()}</span>
+                        <span>₹{(income - parseInt(taxBreakdown.totalTax)).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between text-sm text-surface-500 mt-1">
                         <span>Monthly Take-Home</span>
-                        <span>${((income - taxBreakdown.totalTax) / 12).toLocaleString(undefined, {maximumFractionDigits: 2})}</span>
+                        <span>₹{((income - parseInt(taxBreakdown.totalTax)) / 12).toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
                       </div>
                     </div>
                   </div>
                   
                   <div className="mt-4 text-xs text-surface-500 dark:text-surface-400">
-                    <p>Disclaimer: This is a simplified tax calculator for estimation purposes only. 
-                       Actual tax calculations may vary based on specific deductions, credits, and other factors. 
+                    <p className="mb-1"><strong>Tax Slabs for FY 2023-24 (AY 2024-25):</strong></p>
+                    
+                    <div className="flex space-x-4 mt-2">
+                      <div className="flex-1">
+                        <p className="font-medium mb-1">Old Regime:</p>
+                        <ul className="text-xs space-y-1">
+                          <li>Up to ₹2.5L: Nil</li>
+                          <li>₹2.5L to ₹5L: 5%</li>
+                          <li>₹5L to ₹10L: 20%</li>
+                          <li>Above ₹10L: 30%</li>
+                        </ul>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <p className="font-medium mb-1">New Regime:</p>
+                        <ul className="text-xs space-y-1">
+                          <li>Up to ₹3L: Nil</li>
+                          <li>₹3L to ₹6L: 5%</li>
+                          <li>₹6L to ₹9L: 10%</li>
+                          <li>₹9L to ₹12L: 15%</li>
+                          <li>₹12L to ₹15L: 20%</li>
+                          <li>Above ₹15L: 30%</li>
+                        </ul>
+                      </div>
+                    </div>
+                    
+                    <p className="mt-3">Disclaimer: This is a simplified tax calculator for estimation purposes only. 
+                       Actual tax calculations may vary based on specific deductions, exemptions, and other factors. 
                        Please consult a tax professional for advice on your specific situation.</p>
                   </div>
                 </div>
