@@ -1,21 +1,66 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'react-toastify';
-import { format, isWithinInterval, parseISO, differenceInDays, getDaysInMonth } from 'date-fns';
+    const selectedYear = selectedDate.getFullYear();
+    const selectedMonth = selectedDate.getMonth();
+        
+    const standardDeduction = 50000; // Standard deduction for salaried employees
+                      <p>* TDS is calculated based on your projected annual income (₹{(monthlyGross * 12).toLocaleString()}).</p>
+                      <p>* Paid leaves include Sick Leave and Personal Leave. Other leave types are unpaid.</p>
+    // Apply standard deduction for salaried employees
+    const taxableAnnualIncome = Math.max(0, annualIncome - standardDeduction);
+    
+    // Calculate tax based on income tax slabs for FY 2023-24 (AY 2024-25)
+    if (taxableAnnualIncome <= 250000) {
+      // No tax for income up to ₹2.5 lakhs
 import getIcon from '../utils/iconUtils';
-
-const MainFeature = ({ activeModule }) => {
-  // Create icon components
-  const ClockIcon = getIcon('Clock');
-  const CheckIcon = getIcon('Check');
-  const XIcon = getIcon('X');
+    } else if (taxableAnnualIncome <= 500000) {
+      // 5% tax on income between ₹2.5 lakhs and ₹5 lakhs
+      annualTax = (taxableAnnualIncome - 250000) * 0.05;
+    } else if (taxableAnnualIncome <= 1000000) {
+      // 5% tax on income between ₹2.5 lakhs and ₹5 lakhs
+      // 20% tax on income between ₹5 lakhs and ₹10 lakhs
+      annualTax = 12500 + (taxableAnnualIncome - 500000) * 0.2;
+    let presentCount = 0; // Full day present
+    let halfDayCount = 0; // Half day present
+    let absentCount = 0;  // Completely absent
+    let wfhCount = 0;     // Work from home
+      // 5% tax on income between ₹2.5 lakhs and ₹5 lakhs
+      // 20% tax on income between ₹5 lakhs and ₹10 lakhs
+      // 30% tax on income above ₹10 lakhs
+      annualTax = 112500 + (taxableAnnualIncome - 1000000) * 0.3;
   const CalendarIcon = getIcon('Calendar');
   const UserIcon = getIcon('User');
+    // Calculate surcharge if applicable (for high income)
+    let surcharge = 0;
+    if (taxableAnnualIncome > 5000000 && taxableAnnualIncome <= 10000000) {
+      // 10% surcharge for income between ₹50 lakhs and ₹1 crore
+      surcharge = annualTax * 0.1;
+    } else if (taxableAnnualIncome > 10000000 && taxableAnnualIncome <= 20000000) {
+      // 15% surcharge for income between ₹1 crore and ₹2 crores
+      surcharge = annualTax * 0.15;
+    } else if (taxableAnnualIncome > 20000000 && taxableAnnualIncome <= 50000000) {
+      // 25% surcharge for income between ₹2 crores and ₹5 crores
+      surcharge = annualTax * 0.25;
+    } else if (taxableAnnualIncome > 50000000) {
+      // 37% surcharge for income above ₹5 crores
+      surcharge = annualTax * 0.37;
+    }
+    
+    // Apply surcharge relief if applicable (marginal relief)
+    // This is a simplified calculation - actual relief is more complex
+    const incomeAboveThreshold = taxableAnnualIncome - 5000000;
+    if (taxableAnnualIncome > 5000000 && taxableAnnualIncome <= 5500000 && incomeAboveThreshold < surcharge) {
+      surcharge = incomeAboveThreshold;
+    }
+    
+    // Add surcharge to tax amount
+    annualTax += surcharge;
+    
   const MailIcon = getIcon('Mail');
   const PhoneIcon = getIcon('Phone');
   const BriefcaseIcon = getIcon('Briefcase');
   const CheckCircleIcon = getIcon('CheckCircle');
-  const ChevronDownIcon = getIcon('ChevronDown');
+    // Count status types from attendance records
   const SearchIcon = getIcon('Search');
   const PlusIcon = getIcon('Plus');
   const ChevronRightIcon = getIcon('ChevronRight');
@@ -23,38 +68,79 @@ const MainFeature = ({ activeModule }) => {
   const DollarSignIcon = getIcon('DollarSign');
   const PercentIcon = getIcon('Percent');
   const UsersIcon = getIcon('Users');
+    // For days not recorded in the attendance system for the current month,
+    // assume they're working days that haven't occurred yet
+    const recordedDays = presentCount + halfDayCount + absentCount + wfhCount;
+    const unrecordedWorkingDays = Math.max(0, daysInMonth - recordedDays);
+    
+    // Add unrecorded days to the present count if we're calculating for the current month
+    const today = new Date();
+    const isCurrentMonth = today.getMonth() === selectedMonth && today.getFullYear() === selectedYear;
+    
+    if (isCurrentMonth) {
+      // Only count days up to today
+      const dayOfMonth = today.getDate();
+      const remainingDaysThisMonth = Math.max(0, dayOfMonth - recordedDays);
+      presentCount += remainingDaysThisMonth;
+    } else {
+      // For past months, assume all unrecorded days were present
+      presentCount += unrecordedWorkingDays;
+    }
+    
   const BuildingIcon = getIcon('Building');
   const GraduationCapIcon = getIcon('GraduationCap');
   const AwardIcon = getIcon('Award');
   const HelpCircleIcon = getIcon('HelpCircle');
   const InfoIcon = getIcon('Info');
+    const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1);
+    const lastDayOfMonth = new Date(selectedYear, selectedMonth + 1, 0);
+    
   const RupeeIcon = getIcon('IndianRupee');
   
   // Attendance Module State
   const [attendanceStatus, setAttendanceStatus] = useState('');
-  const [isClockedIn, setIsClockedIn] = useState(false);
   const [clockInTime, setClockInTime] = useState(null);
-  const [clockOutTime, setClockOutTime] = useState(null);
-  const [attendanceNote, setAttendanceNote] = useState('');
-  const [attendanceRecords, setAttendanceRecords] = useState([
+        // Check if leave intersects with the selected month
+        if (!(endDate < firstDayOfMonth || startDate > lastDayOfMonth)) {
+          // Calculate leave duration within this month only
+          const leaveStartInMonth = startDate < firstDayOfMonth ? firstDayOfMonth : startDate;
+          const leaveEndInMonth = endDate > lastDayOfMonth ? lastDayOfMonth : endDate;
+          const leaveDaysInMonth = differenceInDays(leaveEndInMonth, leaveStartInMonth) + 1;
     { date: '2023-06-20', clockIn: '09:02 AM', clockOut: '05:30 PM', status: 'Present' },
-    { date: '2023-06-21', clockIn: '09:15 AM', clockOut: '05:45 PM', status: 'Present' },
-    { date: '2023-06-22', clockIn: '08:55 AM', clockOut: '06:05 PM', status: 'Present' },
-    { date: '2023-06-23', clockIn: '-', clockOut: '-', status: 'Absent' },
-    { date: '2023-06-24', clockIn: '09:10 AM', clockOut: '01:30 PM', status: 'Half Day' },
-    { date: '2023-06-25', clockIn: '08:45 AM', clockOut: '05:15 PM', status: 'Work from Home' },
-  ]);
+          approvedLeaveCount += leaveDaysInMonth;
 
   // Leave Management Module State
-  const [leaveType, setLeaveType] = useState('');
-  const [startDate, setStartDate] = useState('');
+          if (leave.type === 'Sick Leave' || leave.type === 'Personal Leave') {
+            paidLeaveCount += leaveDaysInMonth;
   const [endDate, setEndDate] = useState('');
-  const [leaveReason, setLeaveReason] = useState('');
+            unpaidLeaveCount += leaveDaysInMonth;
   const [leaveRequests, setLeaveRequests] = useState([
     { id: 1, type: 'Sick Leave', start: '2023-07-12', end: '2023-07-14', status: 'Approved' },
     { id: 2, type: 'Vacation', start: '2023-08-10', end: '2023-08-20', status: 'Pending' },
     { id: 3, type: 'Personal Leave', start: '2023-06-05', end: '2023-06-07', status: 'Approved' }
   ]);
+    // Adjust attendance counts to account for approved leaves
+    // Prioritize subtracting from unrecorded days first, then from present days
+    let remainingLeavesToAccount = approvedLeaveCount;
+    
+    // First subtract from unrecorded days
+    if (unrecordedWorkingDays > 0) {
+      const leavesToSubtractFromUnrecorded = Math.min(unrecordedWorkingDays, remainingLeavesToAccount);
+      presentCount -= leavesToSubtractFromUnrecorded;
+      remainingLeavesToAccount -= leavesToSubtractFromUnrecorded;
+    }
+    
+    // Then subtract any remaining from present days
+    if (remainingLeavesToAccount > 0) {
+      presentCount = Math.max(0, presentCount - remainingLeavesToAccount);
+    }
+    
+    // Ensure we don't count more days than are in the month
+    const totalAccountedDays = presentCount + halfDayCount + absentCount + wfhCount;
+    if (totalAccountedDays > daysInMonth) {
+      presentCount = Math.max(0, presentCount - (totalAccountedDays - daysInMonth));
+    }
+    
 
   // Payroll Module State (Updated for Indian Structure with TDS)
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
@@ -62,13 +148,19 @@ const MainFeature = ({ activeModule }) => {
   const [presentDays, setPresentDays] = useState(20); // Default present days
   const [halfDays, setHalfDays] = useState(1); // Default half days
   const [absentDays, setAbsentDays] = useState(1); // Default absent days
-  const [leaveDays, setLeaveDays] = useState(0); // Default leave days
+    setWorkingDays(daysInMonth); // Total days in month
   const [paidLeaves, setPaidLeaves] = useState(0); // Default paid leaves
   const [unpaidLeaves, setUnpaidLeaves] = useState(0); // Default unpaid leaves
   const [basicSalary, setBasicSalary] = useState(35000); // Default basic salary
-
-  const [payrollData, setPayrollData] = useState({
-    basicSalary: 35000,
+    
+    // Deduct half day's salary for half days worked
+    const halfDayDeduction = (dailyRate * 0.5) * halfDayCount; 
+    
+    // Deduct full day's salary for absences
+    const absentDeduction = dailyRate * absentCount; 
+    
+    // Deduct full day's salary for unpaid leaves
+    const unpaidLeaveDeduction = dailyRate * unpaidLeaveCount; 
     allowances: { 
       hra: 14000, 
       da: 7000, 
