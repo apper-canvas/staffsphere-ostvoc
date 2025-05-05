@@ -660,7 +660,6 @@ const MainFeature = ({ activeModule }) => {
         duration: 0.3
       }
     },
-    },
     exit: { opacity: 0, y: 20 }
   };
   
