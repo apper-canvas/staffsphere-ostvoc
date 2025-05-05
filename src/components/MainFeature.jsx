@@ -1,35 +1,158 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, parseISO, getDaysInMonth, differenceInDays } from 'date-fns';
-import { toast } from 'react-toastify';
-import getIcon from '../utils/iconUtils';
+    effectiveRate: 3.74
+  });
 
-const MainFeature = ({ activeModule }) => {
-  // Icon imports
-  const CalendarIcon = getIcon('Calendar');
-  const UserIcon = getIcon('User');
-  const MailIcon = getIcon('Mail');
-  const PhoneIcon = getIcon('Phone');
-  const BriefcaseIcon = getIcon('Briefcase');
+  // Store TDS calculation details for display in UI
+  const [tdsCalculationDetails, setTdsCalculationDetails] = useState({
+    annualIncome: basicSalary * 12,
+    standardDeduction: 50000,
+    taxableAnnualIncome: (basicSalary * 12) - 50000,
+    basicTax: 0,
+    surcharge: 0,
+    cess: 0,
+    totalAnnualTax: 0,
+                              payrollData.deductions.tds +
+                              payrollData.attendanceBasedDeduction +
+                              payrollData.leaveBasedDeduction).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* TDS Calculation Breakdown */}
+                  <div className="p-4 rounded-lg bg-surface-50 dark:bg-surface-800 mt-4">
+                    <h4 className="text-lg font-medium mb-3 flex items-center">
+                      <InfoIcon className="w-4 h-4 mr-2 text-primary" />
+                      TDS Calculation Breakdown
+                    </h4>
+                    
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>Annual Gross Income</span>
+                        <span className="font-medium">₹{annualGross.toLocaleString()}</span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <div className="flex items-center">
+                          <span>Standard Deduction</span>
+                          <div className="relative group ml-1">
+                            <InfoIcon className="w-3 h-3 text-surface-400" />
+                            <div className="absolute left-0 bottom-full mb-2 w-52 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                              Standard deduction of ₹50,000 for salaried employees as per Section 16(ia).
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-green-600 dark:text-green-400">- ₹{tdsCalculationDetails.standardDeduction.toLocaleString()}</span>
+                      </div>
+                      
+                      <div className="flex justify-between pt-1 border-t border-surface-200 dark:border-surface-700 mt-1">
+                        <span>Taxable Annual Income</span>
+                        <span className="font-medium">₹{tdsCalculationDetails.taxableAnnualIncome.toLocaleString()}</span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <div className="flex items-center">
+                          <span>Income Tax</span>
+                          <div className="relative group ml-1">
+                            <InfoIcon className="w-3 h-3 text-surface-400" />
+                            <div className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-surface-800 shadow-md rounded p-2 text-xs hidden group-hover:block z-10">
+                              Calculated based on income tax slabs:<br />
+                              • Upto ₹2.5L: Nil<br />
+                              • ₹2.5L to ₹5L: 5%<br />
+                              • ₹5L to ₹10L: 20%<br />
+                              • Above ₹10L: 30%
+                            </div>
+                          </div>
+                        </div>
+                        <span>₹{Math.round(tdsCalculationDetails.basicTax).toLocaleString()}</span>
+                      </div>
+                      
+                      {tdsCalculationDetails.surcharge > 0 && (
+                        <div className="flex justify-between">
+                          <span>Surcharge</span>
+                          <span>₹{Math.round(tdsCalculationDetails.surcharge).toLocaleString()}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between">
+                        <span>Health & Education Cess (4%)</span>
+                        <span>₹{Math.round(tdsCalculationDetails.cess).toLocaleString()}</span>
+                      </div>
+                      
+                      <div className="flex justify-between border-t border-surface-200 dark:border-surface-700 pt-2 mt-2 font-medium">
+                        <span>Monthly TDS</span>
+                        <span>₹{tdsCalculationDetails.monthlyTDS.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-5 rounded-lg bg-primary text-white">
+                    <h4 className="text-lg font-medium mb-4">Net Salary</h4>
+                    
+                    <div className="text-3xl font-bold">₹{payrollData.netSalary.toLocaleString()}</div>
+                    <div className="text-sm opacity-80 mt-1">for {format(new Date(selectedMonth), 'MMMM yyyy')}</div>
+                    
+                    <button className="mt-4 bg-white text-primary hover:bg-surface-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors">
+                      Download Pay Slip
+                    </button>
+                  </div>
+                  
+                  <div className="p-4 rounded-lg bg-surface-50 dark:bg-surface-800">
+                    <h4 className="text-lg font-medium mb-3 flex items-center">
+                      <InfoIcon className="w-4 h-4 mr-2 text-primary" />
+                      Salary Calculation Breakdown
+                    </h4>
+                    
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Total Earnings (A)</span>
+                        <span className="font-medium">
+                          ₹{(payrollData.basicSalary + 
+                              payrollData.allowances.hra + 
+                              payrollData.allowances.da + 
+                              payrollData.allowances.conveyance + 
+                              payrollData.allowances.specialAllowance).toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <span>Standard Deductions (B)</span>
+                        <span className="font-medium">
+                          ₹{(payrollData.deductions.professionalTax + 
+                              payrollData.deductions.epf + 
+                              payrollData.deductions.esi +
+                      <p>* TDS is calculated based on your projected annual income and tax regime.</p>
+                              Tax Deducted at Source is calculated based on your projected annual income.
+                              <p className="mt-1">
+                                TDS is calculated by:
+                                <ol className="list-decimal list-inside mt-1">
+                                  <li>Estimating annual income</li>
+                                  <li>Applying standard deduction</li>
+                                  <li>Calculating tax based on slabs</li>
+                                  <li>Adding surcharge and cess</li>
+                                  <li>Dividing by 12 for monthly deduction</li>
+                                </ol>
+                              </p>
   const CheckCircleIcon = getIcon('CheckCircle');
-  const SearchIcon = getIcon('Search');
-  const PlusIcon = getIcon('Plus');
-  const ChevronRightIcon = getIcon('ChevronRight');
-  const CalendarPlusIcon = getIcon('CalendarPlus');
   const DollarSignIcon = getIcon('DollarSign');
   const PercentIcon = getIcon('Percent');
-  const UsersIcon = getIcon('Users');
+      annualTax = Math.max(0, (taxableAnnualIncome - 250000) * 0.05);
   const BuildingIcon = getIcon('Building');
   const GraduationCapIcon = getIcon('GraduationCap');
   const AwardIcon = getIcon('Award');
-  const HelpCircleIcon = getIcon('HelpCircle');
-  const InfoIcon = getIcon('Info');
+      annualTax = 12500 + ((taxableAnnualIncome - 500000) * 0.2);
+    } else {
   const RupeeIcon = getIcon('IndianRupee');
   const ClockIcon = getIcon('Clock');
   const CheckIcon = getIcon('Check');
-  const XIcon = getIcon('X');
+      annualTax = 112500 + ((taxableAnnualIncome - 1000000) * 0.3);
   
-  // Attendance Module State
+
   const [attendanceStatus, setAttendanceStatus] = useState('');
   const [clockInTime, setClockInTime] = useState(null);
   const [clockOutTime, setClockOutTime] = useState(null);
@@ -44,7 +167,7 @@ const MainFeature = ({ activeModule }) => {
     { date: '2023-06-28', clockIn: '', clockOut: '', status: 'Absent' },
     { date: '2023-06-27', clockIn: '09:20 AM', clockOut: '06:05 PM', status: 'Present' },
     { date: '2023-06-26', clockIn: '09:15 AM', clockOut: '06:10 PM', status: 'Present' },
-    { date: '2023-06-25', clockIn: '09:00 AM', clockOut: '01:30 PM', status: 'Half Day' },
+
     { date: '2023-06-22', clockIn: '09:05 AM', clockOut: '06:00 PM', status: 'Present' },
     { date: '2023-06-21', clockIn: '09:12 AM', clockOut: '06:05 PM', status: 'Work from Home' },
     { date: '2023-06-20', clockIn: '09:02 AM', clockOut: '05:30 PM', status: 'Present' }
@@ -52,30 +175,31 @@ const MainFeature = ({ activeModule }) => {
 
   // Leave Management Module State
   const [leaveType, setLeaveType] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+    }
+
   const [leaveReason, setLeaveReason] = useState('');
-  const [leaveDays, setLeaveDays] = useState(0);
-  const [leaveRequests, setLeaveRequests] = useState([
-    { id: 1, type: 'Sick Leave', start: '2023-07-12', end: '2023-07-14', status: 'Approved' },
-    { id: 2, type: 'Vacation', start: '2023-08-10', end: '2023-08-20', status: 'Pending' },
-    { id: 3, type: 'Personal Leave', start: '2023-06-05', end: '2023-06-07', status: 'Approved' }
-  ]);
+    const baseTax = annualTax;
+    const totalBeforeCess = baseTax + surcharge;
+
+    // Add 4% health and education cess on (tax + surcharge)
+    const cess = totalBeforeCess * 0.04;
+    const totalTax = totalBeforeCess + cess;
+
 
   // Payroll Module State (Updated for Indian Structure with TDS)
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [workingDays, setWorkingDays] = useState(22); // Default working days in a month
   const [presentDays, setPresentDays] = useState(20); // Default present days
-  const [halfDays, setHalfDays] = useState(1); // Default half days
+      basicTax: baseTax,
   const [absentDays, setAbsentDays] = useState(1); // Default absent days
   const [paidLeaves, setPaidLeaves] = useState(0); // Default paid leaves
-  const [unpaidLeaves, setUnpaidLeaves] = useState(0); // Default unpaid leaves
-  const [basicSalary, setBasicSalary] = useState(35000); // Default basic salary
+      totalAnnualTax: totalTax,
+      monthlyTDS: Math.round(totalTax / 12)
   const [payrollData, setPayrollData] = useState({
-    basicSalary: 35000,
+
     allowances: { 
       hra: 14000, 
-      da: 7000, 
+
       conveyance: 1600, 
       specialAllowance: 8400 
     },
@@ -83,9 +207,9 @@ const MainFeature = ({ activeModule }) => {
       professionalTax: 200, 
       epf: 4200, 
       esi: 0, 
-      tds: 3500 
+    
+    return tdsBreakdown.monthlyTDS;
     },
-    attendanceBasedDeduction: 0,
     leaveBasedDeduction: 0,
     netSalary: 58100
   });
