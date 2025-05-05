@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-    effectiveRate: 3.74
-  });
+import { format, parseISO, differenceInDays, getDaysInMonth } from 'date-fns';
+import getIcon from '../utils/iconUtils';
+import { toast } from 'react-toastify';
 
-  // Store TDS calculation details for display in UI
-  const [tdsCalculationDetails, setTdsCalculationDetails] = useState({
-    annualIncome: basicSalary * 12,
-    standardDeduction: 50000,
-    taxableAnnualIncome: (basicSalary * 12) - 50000,
-    basicTax: 0,
-    surcharge: 0,
-    cess: 0,
-    totalAnnualTax: 0,
+const MainFeature = ({ activeModule }) => {
+  // Create icon components
+  const InfoIcon = getIcon('Info');
+  const XIcon = getIcon('X');
+  const UserIcon = getIcon('User');
+  const MailIcon = getIcon('Mail');
+  const PhoneIcon = getIcon('Phone');
+  const BriefcaseIcon = getIcon('Briefcase');
                               payrollData.deductions.tds +
                               payrollData.attendanceBasedDeduction +
                               payrollData.leaveBasedDeduction).toLocaleString()}
@@ -139,18 +139,65 @@ import { motion, AnimatePresence } from 'framer-motion';
                                 </ol>
                               </p>
   const CheckCircleIcon = getIcon('CheckCircle');
+  const CalendarIcon = getIcon('Calendar');
+  const CalendarPlusIcon = getIcon('CalendarPlus');
   const DollarSignIcon = getIcon('DollarSign');
   const PercentIcon = getIcon('Percent');
       annualTax = Math.max(0, (taxableAnnualIncome - 250000) * 0.05);
   const BuildingIcon = getIcon('Building');
   const GraduationCapIcon = getIcon('GraduationCap');
   const AwardIcon = getIcon('Award');
+  const PlusIcon = getIcon('Plus');
+  const SearchIcon = getIcon('Search');
+  const ChevronRightIcon = getIcon('ChevronRight');
+  const HelpCircleIcon = getIcon('HelpCircle');
       annualTax = 12500 + ((taxableAnnualIncome - 500000) * 0.2);
     } else {
   const RupeeIcon = getIcon('IndianRupee');
   const ClockIcon = getIcon('Clock');
   const CheckIcon = getIcon('Check');
       annualTax = 112500 + ((taxableAnnualIncome - 1000000) * 0.3);
+  
+  // Attendance Module State
+  const [basicSalary, setBasicSalary] = useState(35000);
+  const [halfDays, setHalfDays] = useState(1);
+  const [leaveDays, setLeaveDays] = useState(1);
+  const [unpaidLeaves, setUnpaidLeaves] = useState(1);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [leaveRequests, setLeaveRequests] = useState([
+    { id: 1, type: "Casual Leave", start: "2023-07-05", end: "2023-07-06", reason: "Personal matters", status: "Approved" },
+    { id: 2, type: "Sick Leave", start: "2023-06-20", end: "2023-06-21", reason: "Not feeling well", status: "Approved" },
+    { id: 3, type: "Vacation", start: "2023-08-10", end: "2023-08-15", reason: "Family trip", status: "Pending" },
+    { id: 4, type: "Family Leave", start: "2023-05-25", end: "2023-05-26", reason: "Family function", status: "Rejected" }
+  ]);
+  
+  // Tax Calculator Module State (Updated for Indian Tax System)
+  const [income, setIncome] = useState(750000);
+  const [taxRegime, setTaxRegime] = useState('old');
+  const [standard80c, setStandard80c] = useState(100000);
+  const [medical80d, setMedical80d] = useState(25000);
+  const [hraExemption, setHraExemption] = useState(60000);
+  const [otherDeductions, setOtherDeductions] = useState(20000);
+  const [taxBreakdown, setTaxBreakdown] = useState({
+    incomeTax: 27500,
+    surcharge: 0,
+    cessAmount: 550,
+    totalTax: 28050,
+    effectiveRate: 3.74
+  });
+  
+  // Store TDS calculation details for display in UI
+  const [tdsCalculationDetails, setTdsCalculationDetails] = useState({
+    annualIncome: basicSalary * 12,
+    standardDeduction: 50000,
+    taxableAnnualIncome: (basicSalary * 12) - 50000,
+    basicTax: 0,
+    surcharge: 0,
+    cess: 0,
+    totalAnnualTax: 0,
+    monthlyTDS: 0
+  });
   
 
   const [attendanceStatus, setAttendanceStatus] = useState('');
@@ -186,12 +233,10 @@ import { motion, AnimatePresence } from 'framer-motion';
     const totalTax = totalBeforeCess + cess;
 
 
-  // Payroll Module State (Updated for Indian Structure with TDS)
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+    const totalTax = totalBeforeCess + cess;  
   const [workingDays, setWorkingDays] = useState(22); // Default working days in a month
   const [presentDays, setPresentDays] = useState(20); // Default present days
       basicTax: baseTax,
-  const [absentDays, setAbsentDays] = useState(1); // Default absent days
   const [paidLeaves, setPaidLeaves] = useState(0); // Default paid leaves
       totalAnnualTax: totalTax,
       monthlyTDS: Math.round(totalTax / 12)
@@ -202,6 +247,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
       conveyance: 1600, 
       specialAllowance: 8400 
+      da: 7000,
     },
     deductions: { 
       professionalTax: 200, 
@@ -210,6 +256,12 @@ import { motion, AnimatePresence } from 'framer-motion';
     
     return tdsBreakdown.monthlyTDS;
     },
+      tds: 1500
+    leaveBasedDeduction: 0,
+    netSalary: 58100
+    },
+    basicSalary: 35000,
+    attendanceBasedDeduction: 1590,
     leaveBasedDeduction: 0,
     netSalary: 58100
   });
@@ -224,7 +276,7 @@ import { motion, AnimatePresence } from 'framer-motion';
   const [taxBreakdown, setTaxBreakdown] = useState({
     incomeTax: 27500,
     surcharge: 0,
-    cessAmount: 550,
+    surcharge: 0, 
     totalTax: 28050,
     effectiveRate: 3.74
   });
@@ -334,6 +386,7 @@ import { motion, AnimatePresence } from 'framer-motion';
     });
   };
 
+  const [workingDays, setWorkingDays] = useState(22); // Default working days in a month
   // Calculate attendance and leave based salary adjustments
   const calculateSalaryAdjustments = () => {
     // Parse selected month
@@ -458,7 +511,7 @@ import { motion, AnimatePresence } from 'framer-motion';
     // Apply standard deduction for salaried employees
     const taxableAnnualIncome = Math.max(0, annualIncome - standardDeduction);
     
-    if (annualIncome <= 250000) {
+    let taxableAnnualIncome = Math.max(0, annualIncome - standardDeduction);
     let surcharge = 0;
       annualTax = 0;
     // Calculate tax based on income tax slabs for FY 2023-24 (AY 2024-25)
@@ -474,9 +527,8 @@ import { motion, AnimatePresence } from 'framer-motion';
       annualTax = 12500 + (taxableAnnualIncome - 500000) * 0.2;
     }
       // 5% tax on income between ₹2.5 lakhs and ₹5 lakhs
-      // 20% tax on income between ₹5 lakhs and ₹10 lakhs
-      // 30% tax on income above ₹10 lakhs
-      annualTax = 112500 + (taxableAnnualIncome - 1000000) * 0.3;
+    } else if (taxableAnnualIncome > 1000000) {
+        annualTax = 112500 + (taxableAnnualIncome - 1000000) * 0.3;
     }
     
     // Calculate surcharge if applicable (for high income)
@@ -501,15 +553,12 @@ import { motion, AnimatePresence } from 'framer-motion';
       if (incomeAboveThreshold < surcharge) {
         surcharge = incomeAboveThreshold;
       }
-    // Add 4% cess
-    annualTax = annualTax + (annualTax * 0.04);
-    // Add surcharge to tax amount
-    annualTax += surcharge;
+    }
     
     // Add 4% health and education cess on (tax + surcharge)
-    const cess = annualTax * 0.04;
-    annualTax += cess;
-    
+    const baseTax = annualTax;
+    const totalBeforeCess = baseTax + surcharge;
+    const cess = totalBeforeCess * 0.04;
     // Calculate the detailed TDS breakdown
     const tdsBreakdown = {
       annualIncome: annualIncome,
@@ -519,7 +568,7 @@ import { motion, AnimatePresence } from 'framer-motion';
       surcharge: surcharge,
       cess: cess,
       totalAnnualTax: annualTax,
-      monthlyTDS: Math.round(annualTax / 12)
+      monthlyTDS: Math.round((baseTax + surcharge + cess) / 12)
     };
     
     // Store the TDS breakdown for detailed display in the UI
@@ -532,9 +581,9 @@ import { motion, AnimatePresence } from 'framer-motion';
       hideProgressBar: true,
       position: 'top-right'
     });
-    return Math.round(annualTax / 12);
+    
+    return Math.round((baseTax + surcharge + cess) / 12);
   };
-    return tdsBreakdown.monthlyTDS;
   // Tax Calculator Functions
   const calculateTax = () => {
     let incomeTax = 0;
@@ -725,6 +774,7 @@ import { motion, AnimatePresence } from 'framer-motion';
       deductions: {
         ...prev.deductions,
         epf: newPF
+  };
       }
 
   // Store TDS calculation details for display in UI
@@ -763,7 +813,6 @@ import { motion, AnimatePresence } from 'framer-motion';
   // Update salary calculations when month, attendance or basic salary changes
   useEffect(() => {
     calculateSalaryAdjustments();
-  
   // Helper function to calculate monthly gross salary
   const calculateMonthlyGross = () => {
     return basicSalary + 
