@@ -243,7 +243,7 @@ const MainFeature = ({ activeModule }) => {
     
     return Math.round(totalTax / 12);
   };
-  const CheckCircleIcon = getIcon('CheckCircle');
+
   const handleClockIn = () => {
     const now = new Date();
     const timeString = format(now, 'hh:mm a');
@@ -321,8 +321,8 @@ const MainFeature = ({ activeModule }) => {
     });
   };
 
-  const [workingDays, setWorkingDays] = useState(22); // Default working days in a month
   // Calculate attendance and leave based salary adjustments
+  useEffect(() => {
     // Parse selected month
     const selectedDate = new Date(selectedMonth);
     if (!selectedMonth) return;
@@ -434,7 +434,7 @@ const MainFeature = ({ activeModule }) => {
          leaveDeduction)
       )
     });
-  };
+  }, [selectedMonth, attendanceRecords, leaveRequests, basicSalary]);
 
   // Tax Calculator Functions
   const calculateTax = () => {
@@ -626,7 +626,7 @@ const MainFeature = ({ activeModule }) => {
       deductions: {
         ...prev.deductions,
         epf: newPF
-  };
+      }
   
     }));
   // Calculate TDS when basic salary changes
@@ -650,9 +650,6 @@ const MainFeature = ({ activeModule }) => {
     }
   }, [candidates]);
   
-  // Update salary calculations when month, attendance or basic salary changes
-  }, [selectedMonth, attendanceRecords, leaveRequests, basicSalary]);
-
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -660,9 +657,9 @@ const MainFeature = ({ activeModule }) => {
       opacity: 1,
       transition: { 
         when: "beforeChildren",
-    exit: { opacity: 0, y: 20 }  
-  }, [selectedMonth, attendanceRecords, leaveRequests, basicSalary]);
-      } 
+        duration: 0.3
+      }
+    },
     },
     exit: { opacity: 0, y: 20 }
   };
@@ -1171,8 +1168,7 @@ const MainFeature = ({ activeModule }) => {
                               payrollData.leaveBasedDeduction).toLocaleString()}
                           </span>
                         </div>
-                  
-                  {/* TDS Calculation Breakdown */}
+                      
                   <div className="p-4 rounded-lg bg-surface-50 dark:bg-surface-800 mt-4">
                     <h4 className="text-lg font-medium mb-3 flex items-center">
                       <InfoIcon className="w-4 h-4 mr-2 text-primary" />
@@ -1236,69 +1232,69 @@ const MainFeature = ({ activeModule }) => {
                         <span>Monthly TDS</span>
                         <span>₹{tdsCalculationDetails.monthlyTDS.toLocaleString()}</span>
                       </div>
-                    </div>
                   </div>
                       </div>
                     </div>
-                  </div>
+                </div>
+                
+                <div className="p-5 rounded-lg bg-primary text-white">
+                  <h4 className="text-lg font-medium mb-4">Net Salary</h4>
                   
-                  <div className="p-5 rounded-lg bg-primary text-white">
-                    <h4 className="text-lg font-medium mb-4">Net Salary</h4>
-                    
-                    <div className="text-3xl font-bold">₹{payrollData.netSalary.toLocaleString()}</div>
-                    <div className="text-sm opacity-80 mt-1">for {format(new Date(selectedMonth), 'MMMM yyyy')}</div>
-                    
-                    <button className="mt-4 bg-white text-primary hover:bg-surface-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors">
-                      Download Pay Slip
-                    </button>
-                  </div>
+                  <div className="text-3xl font-bold">₹{payrollData.netSalary.toLocaleString()}</div>
+                  <div className="text-sm opacity-80 mt-1">for {format(new Date(selectedMonth), 'MMMM yyyy')}</div>
                   
-                  <div className="p-4 rounded-lg bg-surface-50 dark:bg-surface-800">
-                    <h4 className="text-lg font-medium mb-3 flex items-center">
-                      <InfoIcon className="w-4 h-4 mr-2 text-primary" />
-                      Salary Calculation Breakdown
-                    </h4>
-                    
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span>Total Earnings (A)</span>
-                        <span className="font-medium">
-                          ₹{(payrollData.basicSalary + 
-                              payrollData.allowances.hra + 
-                              payrollData.allowances.da + 
-                              payrollData.allowances.conveyance + 
-                              payrollData.allowances.specialAllowance).toLocaleString()}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between">
-                        <span>Standard Deductions (B)</span>
-                        <span className="font-medium">
-                          ₹{(payrollData.deductions.professionalTax + 
-                              payrollData.deductions.epf + 
-                              payrollData.deductions.esi +
-                              payrollData.deductions.tds).toLocaleString()}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between">
-                        <span>Attendance & Leave Deductions (C)</span>
-                        <span className="font-medium text-red-500 dark:text-red-400">
-                          ₹{(payrollData.attendanceBasedDeduction + 
-                              payrollData.leaveBasedDeduction).toLocaleString()}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between pt-1 border-t border-surface-200 dark:border-surface-700 mt-1 font-medium">
-                        <span>Net Salary (A-B-C)</span>
-                        <span>₹{payrollData.netSalary.toLocaleString()}</span>
+                  <button className="mt-4 bg-white text-primary hover:bg-surface-100 px-4 py-2 rounded-lg font-medium text-sm transition-colors">
+                    Download Pay Slip
+                  </button>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-surface-50 dark:bg-surface-800">
+                  <h4 className="text-lg font-medium mb-3 flex items-center">
+                    <InfoIcon className="w-4 h-4 mr-2 text-primary" />
+                    Salary Calculation Breakdown
+                  </h4>
+                  
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Total Earnings (A)</span>
+                      <span className="font-medium">
+                        ₹{(payrollData.basicSalary + 
+                            payrollData.allowances.hra + 
+                            payrollData.allowances.da + 
+                            payrollData.allowances.conveyance + 
+                            payrollData.allowances.specialAllowance).toLocaleString()}
+                      </span>
                       </div>
                     </div>
-                    
-                          ₹{(payrollData.deductions.professionalTax +
-                      <p>* TDS is calculated based on your projected annual income (₹{(monthlyGross * 12).toLocaleString()}).</p>
+                    <div className="flex justify-between">
+                      <span>Standard Deductions (B)</span>
+                      <span className="font-medium">
+                        ₹{(payrollData.deductions.professionalTax + 
+                            payrollData.deductions.epf + 
+                            payrollData.deductions.esi +
+                            payrollData.deductions.tds).toLocaleString()}
+                      </span>
                       <p>* TDS is calculated based on your projected annual income and tax regime.</p>
+                    
+                    <div className="flex justify-between">
+                      <span>Attendance & Leave Deductions (C)</span>
+                      <span className="font-medium text-red-500 dark:text-red-400">
+                        ₹{(payrollData.attendanceBasedDeduction + 
+                            payrollData.leaveBasedDeduction).toLocaleString()}
+                      </span>
                     </div>
+                    
+                    <div className="flex justify-between pt-1 border-t border-surface-200 dark:border-surface-700 mt-1 font-medium">
+                      <span>Net Salary (A-B-C)</span>
+                      <span>₹{payrollData.netSalary.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-3">
+                    <p>* TDS is calculated based on your projected annual income (₹{(monthlyGross * 12).toLocaleString()}).</p>
+                    <p>* TDS is calculated based on your projected annual income and tax regime.</p>
+                   
+                    <p className="mt-2">Tax Deducted at Source is calculated based on your projected annual income.</p>
                         <p>Tax Deducted at Source is calculated based on your projected annual income.</p>
                         <p className="mt-1">
                           TDS is calculated by:
@@ -1306,8 +1302,8 @@ const MainFeature = ({ activeModule }) => {
                             <li>Estimating annual income</li>
                             <li>Applying standard deduction</li>
                             <li>Calculating tax based on slabs</li>
-                            <li>Adding surcharge and cess</li>
-                            <li>Dividing by 12 for monthly deduction</li>
+                  </div>
+                </div>
                           </ol>
                         </p>
                        </div>
