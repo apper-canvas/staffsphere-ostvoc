@@ -23,6 +23,9 @@ const MainFeature = ({ activeModule }) => {
   const DollarSignIcon = getIcon('DollarSign');
   const PercentIcon = getIcon('Percent');
   const UsersIcon = getIcon('Users');
+  const BuildingIcon = getIcon('Building');
+  const GraduationCapIcon = getIcon('GraduationCap');
+  const AwardIcon = getIcon('Award');
   
   // Attendance Module State
   const [attendanceStatus, setAttendanceStatus] = useState('');
@@ -72,11 +75,28 @@ const MainFeature = ({ activeModule }) => {
   const [candidateSearchQuery, setCandidateSearchQuery] = useState('');
   const [filteredCandidates, setFilteredCandidates] = useState([]);
   const [candidates, setCandidates] = useState([
-    { id: 1, name: "Alex Johnson", email: "alex@example.com", position: "Software Engineer", status: "Interview" },
-    { id: 2, name: "Taylor Smith", email: "taylor@example.com", position: "UX Designer", status: "Applied" },
-    { id: 3, name: "Jordan Lee", email: "jordan@example.com", position: "Product Manager", status: "Offer" },
-    { id: 4, name: "Casey Brown", email: "casey@example.com", position: "Marketing Specialist", status: "Screening" }
+    { id: 1, name: "Alex Johnson", email: "alex@example.com", position: "Software Engineer", status: "Interview", phone: "555-123-4567", education: "MS Computer Science", experience: "5 years", skills: ["JavaScript", "React", "Node.js"] },
+    { id: 2, name: "Taylor Smith", email: "taylor@example.com", position: "UX Designer", status: "Applied", phone: "555-987-6543", education: "BA Design", experience: "3 years", skills: ["UI/UX", "Figma", "Adobe XD"] },
+    { id: 3, name: "Jordan Lee", email: "jordan@example.com", position: "Product Manager", status: "Offer", phone: "555-246-8135", education: "MBA", experience: "7 years", skills: ["Product Strategy", "Agile", "Data Analysis"] },
+    { id: 4, name: "Casey Brown", email: "casey@example.com", position: "Marketing Specialist", status: "Screening", phone: "555-369-1478", education: "BA Marketing", experience: "2 years", skills: ["Content Marketing", "Social Media", "Analytics"] }
   ]);
+  
+  // Hiring Module Modal States
+  const [showAddCandidateModal, setShowAddCandidateModal] = useState(false);
+  const [showViewCandidateModal, setShowViewCandidateModal] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+  
+  // Add Candidate Form State
+  const [newCandidate, setNewCandidate] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    position: '',
+    education: '',
+    experience: '',
+    skills: '',
+    status: 'Applied'
+  });
   
   // Attendance Module Functions
   const handleClockIn = () => {
@@ -210,6 +230,70 @@ const MainFeature = ({ activeModule }) => {
     }
   };
   
+  // Function to handle opening Add Candidate modal
+  const handleAddCandidateClick = () => {
+    setShowAddCandidateModal(true);
+  };
+  
+  // Function to handle form field changes for new candidate
+  const handleNewCandidateChange = (e) => {
+    const { name, value } = e.target;
+    setNewCandidate({
+      ...newCandidate,
+      [name]: value
+    });
+  };
+  
+  // Function to handle adding a new candidate
+  const handleAddCandidate = (e) => {
+    e.preventDefault();
+    
+    // Validate form
+    if (!newCandidate.name || !newCandidate.email || !newCandidate.position) {
+      toast.error('Please fill out all required fields');
+      return;
+    }
+    
+    // Create new candidate object
+    const candidateToAdd = {
+      id: candidates.length + 1,
+      name: newCandidate.name,
+      email: newCandidate.email,
+      phone: newCandidate.phone,
+      position: newCandidate.position,
+      education: newCandidate.education,
+      experience: newCandidate.experience,
+      skills: newCandidate.skills.split(',').map(skill => skill.trim()),
+      status: newCandidate.status
+    };
+    
+    // Add candidate to the list
+    setCandidates([candidateToAdd, ...candidates]);
+    
+    // Reset form and close modal
+    setNewCandidate({
+      name: '',
+      email: '',
+      phone: '',
+      position: '',
+      education: '',
+      experience: '',
+      skills: '',
+      status: 'Applied'
+    });
+    setShowAddCandidateModal(false);
+    
+    toast.success(`Added new candidate: ${candidateToAdd.name}`, {
+      icon: '👤'
+    });
+  };
+  
+  // Function to handle viewing candidate details
+  const handleViewCandidate = (candidate) => {
+    setSelectedCandidate(candidate);
+    setShowViewCandidateModal(true);
+  };
+  
   // Update tax calculations when inputs change
   useEffect(() => {
     calculateTax();
@@ -238,6 +322,12 @@ const MainFeature = ({ activeModule }) => {
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 }
+  };
+  
+  const modalVariants = {
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: { opacity: 1, scale: 1, transition: { type: "spring", damping: 25, stiffness: 300 } },
+    exit: { opacity: 0, scale: 0.8, transition: { duration: 0.2 } }
   };
 
   // Render the active module
@@ -781,7 +871,10 @@ const MainFeature = ({ activeModule }) => {
                   Candidate Management
                 </h3>
                 
-                <button className="btn btn-primary">
+                <button 
+                  className="btn btn-primary"
+                  onClick={handleAddCandidateClick}
+                >
                   <PlusIcon className="w-4 h-4 mr-1" />
                   Add Candidate
                 </button>
@@ -833,7 +926,10 @@ const MainFeature = ({ activeModule }) => {
                           {candidate.status}
                         </span>
                         
-                        <button className="flex items-center text-primary hover:text-primary-dark text-sm font-medium">
+                        <button 
+                          className="flex items-center text-primary hover:text-primary-dark text-sm font-medium"
+                          onClick={() => handleViewCandidate(candidate)}
+                        >
                           View Details
                           <ChevronRightIcon className="w-4 h-4 ml-1" />
                         </button>
@@ -865,6 +961,320 @@ const MainFeature = ({ activeModule }) => {
                 </div>
               </div>
             </motion.div>
+            
+            {/* Add Candidate Modal */}
+            <AnimatePresence>
+              {showAddCandidateModal && (
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={modalVariants}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                >
+                  <div 
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                    onClick={() => setShowAddCandidateModal(false)}
+                  ></div>
+                  
+                  <div className="relative w-full max-w-xl bg-white dark:bg-surface-800 rounded-xl shadow-xl overflow-hidden">
+                    <div className="p-5 border-b border-surface-200 dark:border-surface-700">
+                      <h3 className="text-xl font-semibold flex items-center">
+                        <PlusIcon className="w-5 h-5 mr-2 text-primary" />
+                        Add New Candidate
+                      </h3>
+                    </div>
+                    
+                    <form onSubmit={handleAddCandidate} className="p-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="form-label">Full Name <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            name="name"
+                            value={newCandidate.name}
+                            onChange={handleNewCandidateChange}
+                            className="form-input"
+                            placeholder="John Doe"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="form-label">Email <span className="text-red-500">*</span></label>
+                          <input
+                            type="email"
+                            name="email"
+                            value={newCandidate.email}
+                            onChange={handleNewCandidateChange}
+                            className="form-input"
+                            placeholder="john@example.com"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="form-label">Phone Number</label>
+                          <input
+                            type="text"
+                            name="phone"
+                            value={newCandidate.phone}
+                            onChange={handleNewCandidateChange}
+                            className="form-input"
+                            placeholder="555-123-4567"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="form-label">Position <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            name="position"
+                            value={newCandidate.position}
+                            onChange={handleNewCandidateChange}
+                            className="form-input"
+                            placeholder="Software Engineer"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="form-label">Education</label>
+                          <input
+                            type="text"
+                            name="education"
+                            value={newCandidate.education}
+                            onChange={handleNewCandidateChange}
+                            className="form-input"
+                            placeholder="BS Computer Science"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="form-label">Experience</label>
+                          <input
+                            type="text"
+                            name="experience"
+                            value={newCandidate.experience}
+                            onChange={handleNewCandidateChange}
+                            className="form-input"
+                            placeholder="3 years"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <label className="form-label">Skills (comma separated)</label>
+                        <input
+                          type="text"
+                          name="skills"
+                          value={newCandidate.skills}
+                          onChange={handleNewCandidateChange}
+                          className="form-input"
+                          placeholder="JavaScript, React, Node.js"
+                        />
+                      </div>
+                      
+                      <div className="mb-6">
+                        <label className="form-label">Status</label>
+                        <select
+                          name="status"
+                          value={newCandidate.status}
+                          onChange={handleNewCandidateChange}
+                          className="form-input"
+                        >
+                          <option value="Applied">Applied</option>
+                          <option value="Screening">Screening</option>
+                          <option value="Interview">Interview</option>
+                          <option value="Offer">Offer</option>
+                          <option value="Rejected">Rejected</option>
+                        </select>
+                      </div>
+                      
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddCandidateModal(false)}
+                          className="btn btn-outline"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="btn btn-primary"
+                        >
+                          Add Candidate
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
+            {/* View Candidate Modal */}
+            <AnimatePresence>
+              {showViewCandidateModal && selectedCandidate && (
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={modalVariants}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                >
+                  <div 
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                    onClick={() => setShowViewCandidateModal(false)}
+                  ></div>
+                  
+                  <div className="relative w-full max-w-2xl bg-white dark:bg-surface-800 rounded-xl shadow-xl overflow-hidden">
+                    <div className="p-5 border-b border-surface-200 dark:border-surface-700 flex justify-between items-center">
+                      <h3 className="text-xl font-semibold flex items-center">
+                        <UserIcon className="w-5 h-5 mr-2 text-primary" />
+                        Candidate Details
+                      </h3>
+                      <button
+                        onClick={() => setShowViewCandidateModal(false)}
+                        className="text-surface-500 hover:text-surface-700 dark:hover:text-surface-300"
+                      >
+                        <XIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                    
+                    <div className="p-5">
+                      <div className="flex flex-col md:flex-row">
+                        <div className="md:w-1/3 mb-5 md:mb-0 md:pr-5">
+                          <div className="w-24 h-24 rounded-full bg-primary/20 text-primary flex items-center justify-center text-4xl font-bold mb-3">
+                            {selectedCandidate.name.charAt(0)}
+                          </div>
+                          
+                          <div className="mb-4">
+                            <h4 className="text-lg font-medium">{selectedCandidate.name}</h4>
+                            <div className="text-sm text-surface-500">{selectedCandidate.position}</div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="flex items-start">
+                              <MailIcon className="w-4 h-4 mr-2 mt-0.5 text-surface-500" />
+                              <div className="flex-1">
+                                <div className="text-sm font-medium">Email</div>
+                                <div className="text-sm text-surface-500">{selectedCandidate.email}</div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-start">
+                              <PhoneIcon className="w-4 h-4 mr-2 mt-0.5 text-surface-500" />
+                              <div className="flex-1">
+                                <div className="text-sm font-medium">Phone</div>
+                                <div className="text-sm text-surface-500">{selectedCandidate.phone || "Not provided"}</div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-start">
+                              <GraduationCapIcon className="w-4 h-4 mr-2 mt-0.5 text-surface-500" />
+                              <div className="flex-1">
+                                <div className="text-sm font-medium">Education</div>
+                                <div className="text-sm text-surface-500">{selectedCandidate.education || "Not provided"}</div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-start">
+                              <BriefcaseIcon className="w-4 h-4 mr-2 mt-0.5 text-surface-500" />
+                              <div className="flex-1">
+                                <div className="text-sm font-medium">Experience</div>
+                                <div className="text-sm text-surface-500">{selectedCandidate.experience || "Not provided"}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="md:w-2/3 md:border-l md:border-surface-200 md:dark:border-surface-700 md:pl-5">
+                          <div className="mb-5">
+                            <h5 className="text-md font-medium mb-2 flex items-center">
+                              <AwardIcon className="w-4 h-4 mr-2 text-primary" />
+                              Skills
+                            </h5>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedCandidate.skills && selectedCandidate.skills.map((skill, idx) => (
+                                <span 
+                                  key={idx} 
+                                  className="px-3 py-1 rounded-full bg-primary/10 text-primary dark:bg-primary/20 text-sm"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                              {(!selectedCandidate.skills || selectedCandidate.skills.length === 0) && (
+                                <span className="text-sm text-surface-500">No skills provided</span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="mb-5">
+                            <h5 className="text-md font-medium mb-2 flex items-center">
+                              <CheckCircleIcon className="w-4 h-4 mr-2 text-primary" />
+                              Application Status
+                            </h5>
+                            <div className="flex items-center">
+                              <span className={`badge mr-3 ${
+                                selectedCandidate.status === 'Applied' ? 'badge-info' : 
+                                selectedCandidate.status === 'Screening' ? 'badge-neutral' :
+                                selectedCandidate.status === 'Interview' ? 'badge-warning' :
+                                selectedCandidate.status === 'Offer' ? 'badge-success' :
+                                selectedCandidate.status === 'Rejected' ? 'badge-danger' :
+                                'badge-neutral'
+                              }`}>
+                                {selectedCandidate.status}
+                              </span>
+                              <span className="text-sm text-surface-500">Updated on {format(new Date(), 'MMM dd, yyyy')}</span>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h5 className="text-md font-medium mb-2 flex items-center">
+                              <BuildingIcon className="w-4 h-4 mr-2 text-primary" />
+                              Update Status
+                            </h5>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                              {['Applied', 'Screening', 'Interview', 'Offer', 'Rejected'].map(status => (
+                                <button
+                                  key={status}
+                                  className={`px-3 py-2 text-xs text-center rounded-lg border transition-colors ${
+                                    selectedCandidate.status === status 
+                                      ? 'border-primary bg-primary/10 text-primary dark:bg-primary/20' 
+                                      : 'border-surface-200 dark:border-surface-700 hover:bg-surface-50 dark:hover:bg-surface-800'
+                                  }`}
+                                  onClick={() => {
+                                    const updatedCandidate = { ...selectedCandidate, status: status };
+                                    setCandidates(candidates.map(c => 
+                                      c.id === selectedCandidate.id ? updatedCandidate : c
+                                    ));
+                                    setSelectedCandidate(updatedCandidate);
+                                    toast.success(`Candidate status updated to ${status}`, {
+                                      icon: '👤'
+                                    });
+                                  }}
+                                >
+                                  {status}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 border-t border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/60 flex justify-end">
+                      <button
+                        onClick={() => setShowViewCandidateModal(false)}
+                        className="btn btn-primary"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         );
         
